@@ -1,0 +1,20 @@
+{
+  "version": "xpu-evidence-manifest-v1",
+  "recorded_before_comparison": true,
+  "contracts": {
+    "prompt_text": "Prompt text must match the CUDA baseline prompt exactly for the same input row.",
+    "token_ids": "Encoded token IDs must match the CUDA baseline for the same input row.",
+    "decision_ids": "Every decision ID in the input fixture must appear exactly once in the output.",
+    "option_ids": "Option IDs and their declared order must match the input row.",
+    "probabilities": "Every reported probability must be finite and the option probabilities for one decision must sum to 1 within floating-point tolerance.",
+    "coverage": "The 37-state by 21-question fixture (777 decisions) must be scored in full for direct, serial, and shared modes."
+  },
+  "bf16_probability_difference_review_threshold": 0.05,
+  "review_policy": "Report every changed choice against the published NVIDIA rows. Investigate near-ties instead of dropping them. Do not hide a changed choice or a near-tie from the report.",
+  "known_limits": [
+    "Validated: direct, serial, and shared scoring reach drift grade against the published NVIDIA rows. 3 to 7 of 777 choices differ, with maximum probability difference near 0.09. This sits inside the repository's own same-GPU drift range. Compact generation with --prefill-chunk-size 512 --attention eager reproduced the published 21-item array exactly.",
+    "Limited: reranker choices drift on XPU. The readout compares two large yes/no logits with a small margin. A CPU FP32 reference confirmed the NVIDIA choices and traced the drift to readout sensitivity, not a port bug. Treat reranker output on XPU as informational only.",
+    "Workaround: a single forward longer than about 1812 tokens can corrupt last-token logits on XPU on the Qwen3.5 hybrid. All Torch scoring paths chunk XPU forwards at 1024 tokens through the KV cache. The defect is upstream in PyTorch XPU. The workaround is scoped to XPU; CUDA and CPU paths are unchanged.",
+    "Untested: other Arc cards, multiple GPUs, Windows, and torch versions other than 2.10.0+xpu. The Arc B580 is expected to work but was not the validation target."
+  ]
+}

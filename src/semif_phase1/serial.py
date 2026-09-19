@@ -4,12 +4,11 @@ from __future__ import annotations
 
 import copy
 import hashlib
-import inspect
 import json
 import time
 
-from .core import direct_messages, softmax
-from .direct import PROMPT_VERSION, encode_prompt
+from .core import direct_messages, softmax, synchronize_device
+from .direct import PROMPT_VERSION, cached_forward, encode_prompt
 
 
 def _state_prefix(tokenizer, state) -> list[int]:
@@ -32,12 +31,7 @@ def _state_prefix(tokenizer, state) -> list[int]:
 
 
 def _cached_forward(model, inputs):
-    parameters = inspect.signature(model.forward).parameters
-    if "logits_to_keep" not in parameters and hasattr(model, "get_base_model"):
-        parameters = inspect.signature(model.get_base_model().forward).parameters
-    if "logits_to_keep" not in parameters:
-        raise RuntimeError("Model lacks selective last-position logits")
-    return model(**inputs, use_cache=True, return_dict=True, logits_to_keep=1)
+    return cached_forward(model, inputs)
 
 
 class SerialPrefixScorer:
@@ -62,7 +56,7 @@ class SerialPrefixScorer:
         prefix = self.prefix if hit else _state_prefix(self.tokenizer, row["state"])
         if not prefix or ids[: len(prefix)] != prefix or len(ids) <= len(prefix):
             raise ValueError("State prefix does not match the full prompt")
-        sync = lambda: torch.cuda.synchronize(self.device) if self.device.type == "cuda" else None
+        sync = lambda: synchronize_device(self.device)
         prefill_seconds = 0.0
         self.model.eval()
         with torch.inference_mode():

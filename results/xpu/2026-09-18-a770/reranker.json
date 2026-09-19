@@ -1,0 +1,48 @@
+{
+  "version": "shape777-reranker-published-v1",
+  "input_sha256": "8dcf414b12fc2684e3c4ca5f3ebfd3f525f5346fec4a9bc67eb65138101f55f1",
+  "model": {
+    "source": "Qwen/Qwen3-Reranker-4B",
+    "revision": "22e683669bc0f0bd69640a1354a6d0aebcfeede5",
+    "dtype": "bfloat16",
+    "torch_version": "2.10.0+xpu",
+    "transformers_version": "5.17.0"
+  },
+  "hardware": "Intel(R) Arc(TM) A770 Graphics",
+  "semantic_contract": "Two independent yes/no relevance passes per binary decision; option log-odds normalized only for relative comparison.",
+  "results": [
+    {
+      "pair_batch_size": 1,
+      "judgments": 777,
+      "wall_seconds": 534.4347044719616,
+      "forward_seconds": 527.7833403780824,
+      "judgments_per_second": 1.4538726499202566,
+      "state_latency_p50_seconds": 13.691916991956532,
+      "state_latency_p95_seconds": 17.293699579604436,
+      "padded_tokens": 2657583,
+      "peak_cuda_bytes": 8209808896
+    },
+    {
+      "pair_batch_size": 4,
+      "judgments": 777,
+      "wall_seconds": 527.7729445999721,
+      "forward_seconds": 522.7748881693697,
+      "judgments_per_second": 1.4722240083544462,
+      "state_latency_p50_seconds": 14.240432874008548,
+      "state_latency_p95_seconds": 14.573002634220757,
+      "padded_tokens": 2659248,
+      "peak_cuda_bytes": 8610841600
+    },
+    {
+      "pair_batch_size": 8,
+      "judgments": 777,
+      "wall_seconds": 503.967791083036,
+      "forward_seconds": 499.229940627818,
+      "judgments_per_second": 1.5417651956094511,
+      "state_latency_p50_seconds": 13.614371731993742,
+      "state_latency_p95_seconds": 13.864000600215514,
+      "padded_tokens": 2660284,
+      "peak_cuda_bytes": 9176393728
+    }
+  ]
+}
