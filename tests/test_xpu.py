@@ -39,6 +39,43 @@ def test_loader_backend_and_single_device_contract(monkeypatch, backend, count):
         assert loader.call_args.kwargs["revision"] == "a" * 40
 
 
+@pytest.mark.parametrize("requested,available,expected_error", [
+    ("xpu", ("cuda",), "requires one XPU GPU"),
+    ("cuda", ("xpu",), "requires one CUDA GPU"),
+    ("rocm", ("cuda", "xpu"), "backend must be"),
+])
+def test_loader_rejects_unavailable_explicit_backend(monkeypatch, requested, available, expected_error):
+    accelerators = {
+        name: SimpleNamespace(is_available=lambda name=name: name in available, device_count=lambda: 1)
+        for name in ("cuda", "xpu")
+    }
+    monkeypatch.setitem(sys.modules, "torch", SimpleNamespace(
+        **accelerators, bfloat16="bf16", __version__="test"))
+    with pytest.raises(ValueError, match=expected_error):
+        load_causal_model("test/remote", "a" * 40, backend=requested)
+
+
+def test_loader_explicit_backend_does_not_prefer_cuda(monkeypatch):
+    """An explicit backend="xpu" request must not silently fall back to CUDA."""
+    accelerators = {
+        name: SimpleNamespace(is_available=lambda: True, device_count=lambda: 1)
+        for name in ("cuda", "xpu")
+    }
+    monkeypatch.setitem(sys.modules, "torch", SimpleNamespace(
+        **accelerators, bfloat16="bf16", __version__="test"))
+    model = Mock()
+    loader = Mock(return_value=(model, {}))
+    transformers = SimpleNamespace(
+        AutoConfig=SimpleNamespace(from_pretrained=Mock(return_value=SimpleNamespace(model_type="qwen3"))),
+        AutoTokenizer=SimpleNamespace(from_pretrained=Mock()),
+        AutoModelForCausalLM=SimpleNamespace(from_pretrained=loader),
+        __version__="test",
+    )
+    monkeypatch.setitem(sys.modules, "transformers", transformers)
+    load_causal_model("test/remote", "a" * 40, backend="xpu")
+    assert loader.call_args.kwargs["device_map"] == {"": "xpu:0"}
+
+
 def test_synchronization_dispatch(monkeypatch):
     cuda, xpu = Mock(), Mock()
     monkeypatch.setitem(sys.modules, "torch", SimpleNamespace(cuda=cuda, xpu=xpu))

@@ -2,10 +2,13 @@
 
 The Torch backend runs SemIf's direct, serial-prefix reuse, and parallel
 shared-state decision modes on an Intel Arc discrete GPU. CUDA stays the
-default backend. The loader picks CUDA when CUDA is available. The loader
-tries an Intel GPU only when no CUDA device is available. This applies to
-any Arc card with enough VRAM to hold the model. The validation below used
-one Intel Arc A770 with 16 GB of VRAM.
+default backend. With `--backend torch` (the default), the loader picks
+CUDA when CUDA is available, and tries an Intel GPU only when no CUDA
+device is available. Add `--backend xpu` to require the Intel GPU
+directly; this matches the `--backend mlx` flag on Apple Silicon, and it
+does not fall back to CUDA even when a CUDA device is present. This
+applies to any Arc card with enough VRAM to hold the model. The
+validation below used one Intel Arc A770 with 16 GB of VRAM.
 
 ## Install
 

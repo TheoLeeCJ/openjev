@@ -79,8 +79,12 @@ def synchronize_device(device) -> None:
         torch.xpu.synchronize(device)
 
 
-def load_causal_model(source: str, revision: str, attn_implementation: str = "sdpa"):
-    """Load one pinned causal model on the sole visible accelerator device."""
+def load_causal_model(source: str, revision: str, attn_implementation: str = "sdpa", backend: str | None = None):
+    """Load one pinned causal model on the sole visible accelerator device.
+
+    Pass backend="cuda" or backend="xpu" to require that accelerator. Leave
+    it None to auto-detect: CUDA first, then XPU.
+    """
     import torch
     import transformers
 
@@ -89,9 +93,19 @@ def load_causal_model(source: str, revision: str, attn_implementation: str = "sd
         raise ValueError("Remote models require a pinned 40-character commit revision")
     if local and not revision:
         raise ValueError("Local models require an explicit manifest/revision string")
-    if torch.cuda.is_available():
+    if backend not in (None, "cuda", "xpu"):
+        raise ValueError("backend must be 'cuda', 'xpu', or None for auto-detection")
+    has_cuda = torch.cuda.is_available()
+    has_xpu = getattr(torch, "xpu", None) is not None and torch.xpu.is_available()
+    if backend == "cuda":
+        if not has_cuda:
+            raise ValueError("This scorer requires one CUDA GPU")
+    elif backend == "xpu":
+        if not has_xpu:
+            raise ValueError("This scorer requires one XPU GPU")
+    elif has_cuda:
         backend = "cuda"
-    elif getattr(torch, "xpu", None) is not None and torch.xpu.is_available():
+    elif has_xpu:
         backend = "xpu"
     else:
         raise ValueError("This scorer requires one CUDA or XPU GPU")

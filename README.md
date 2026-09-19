@@ -35,7 +35,8 @@ This baseline reads typed option probabilities directly from a model. No answer 
 serial prefix reuse, and parallel shared-state decisions on macOS arm64.
 Install `pip install -e '.[test,mlx]'` and add `--backend mlx` to the scorer command.
 
-**Intel Arc:** the Torch backend also runs on an Intel Arc GPU. See
+**Intel Arc:** the Torch backend also runs on an Intel Arc GPU. Add
+`--backend xpu` to the scorer command to require it. See
 [Intel Arc (XPU)](docs/XPU.md) for the two-step install, device selection,
 and the known limits. The `xpu` extra records the validated torch pin.
 
