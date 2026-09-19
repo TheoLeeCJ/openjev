@@ -69,8 +69,18 @@ def digest(text: str) -> str:
     return hashlib.sha256(text.encode()).hexdigest()
 
 
-def load_causal_model(source: str, revision: str):
-    """Load one pinned causal model on the sole visible CUDA device."""
+def synchronize_device(device) -> None:
+    """Synchronize a CUDA or XPU device. Other devices need no synchronization."""
+    import torch
+
+    if device.type == "cuda":
+        torch.cuda.synchronize(device)
+    elif device.type == "xpu":
+        torch.xpu.synchronize(device)
+
+
+def load_causal_model(source: str, revision: str, attn_implementation: str = "sdpa"):
+    """Load one pinned causal model on the sole visible accelerator device."""
     import torch
     import transformers
 
@@ -79,8 +89,17 @@ def load_causal_model(source: str, revision: str):
         raise ValueError("Remote models require a pinned 40-character commit revision")
     if local and not revision:
         raise ValueError("Local models require an explicit manifest/revision string")
-    if not torch.cuda.is_available() or torch.cuda.device_count() != 1:
-        raise ValueError("Expose exactly one CUDA GPU, for example with CUDA_VISIBLE_DEVICES")
+    if torch.cuda.is_available():
+        backend = "cuda"
+    elif getattr(torch, "xpu", None) is not None and torch.xpu.is_available():
+        backend = "xpu"
+    else:
+        raise ValueError("This scorer requires one CUDA or XPU GPU")
+    count = torch.cuda.device_count() if backend == "cuda" else torch.xpu.device_count()
+    if count != 1:
+        raise ValueError(
+            "Expose exactly one GPU, for example with CUDA_VISIBLE_DEVICES or ONEAPI_DEVICE_SELECTOR"
+        )
     common = {"revision": None if local else revision, "local_files_only": local, "trust_remote_code": False}
     config = transformers.AutoConfig.from_pretrained(source, **common)
     tokenizer = transformers.AutoTokenizer.from_pretrained(source, **common)
@@ -94,7 +113,8 @@ def load_causal_model(source: str, revision: str):
         source,
         config=config,
         dtype=torch.bfloat16,
-        device_map={"": "cuda:0"},
+        device_map={"": f"{backend}:0"},
+        attn_implementation=attn_implementation,
         low_cpu_mem_usage=True,
         output_loading_info=True,
         **common,
@@ -106,6 +126,7 @@ def load_causal_model(source: str, revision: str):
         "source": source,
         "revision": revision,
         "dtype": "bfloat16",
+        "attention": attn_implementation,
         "torch_version": torch.__version__,
         "transformers_version": transformers.__version__,
     }
